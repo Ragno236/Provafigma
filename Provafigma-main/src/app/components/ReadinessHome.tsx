@@ -1,10 +1,4 @@
-import { useState, useEffect, useRef, ReactNode, createContext, useContext } from "react";
-import { getReadinessTier } from "../utils/readinessTier";
-import { ReadinessBadge } from "./ReadinessBadge";
-
-// ─── Prototype Navigation Context ───────────────────────────────────────────
-const ProtoNavCtx = createContext<{ goNext: () => void; goPrev: () => void; goToIndex?: (idx: number) => void } | null>(null);
-function useProtoNav() { return useContext(ProtoNavCtx); }
+import { useState, ReactNode } from "react";
 
 const BG = "#FFFFFF";
 const BLACK = "#0A0A0A";
@@ -63,9 +57,9 @@ function ArrowLeft({ color = BLACK, size = 18 }: { color?: string; size?: number
   );
 }
 
-function CloseIcon({ color = BLACK }: { color?: string }) {
+function CloseIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={BLACK} strokeWidth="1.8" strokeLinecap="round">
       <line x1="6" y1="6" x2="18" y2="18" />
       <line x1="18" y1="6" x2="6" y2="18" />
     </svg>
@@ -194,6 +188,36 @@ const TABS = [
   { label: "Profilo", Icon: ProfileTabIcon },
 ];
 
+function ScoreRing({ value, size = 132, stroke = 10, light = false }: { value: number; size?: number; stroke?: number; light?: boolean }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+  return (
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={light ? "#E4E3DD" : "rgba(255,255,255,0.12)"} strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={light ? BLACK : ACCENT} strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{ fontSize: size * 0.29, fontWeight: 700, color: light ? BLACK : WHITE, letterSpacing: "-0.03em", lineHeight: 1 }}>
+          {value}<span style={{ fontSize: size * 0.13, color: light ? GRAY : "rgba(255,255,255,0.5)" }}>%</span>
+        </div>
+        <div style={{ fontSize: 9, color: light ? GRAY : "rgba(255,255,255,0.45)", letterSpacing: "0.12em", marginTop: 4 }}>
+          READY
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PhoneFrame({ label, children, bg = BG }: { label: string; children: ReactNode; bg?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
@@ -228,25 +252,6 @@ function PhoneFrame({ label, children, bg = BG }: { label: string; children: Rea
 }
 
 function TabBar({ active }: { active: number }) {
-  const nav = useProtoNav();
-
-  const handleTabClick = (index: number) => {
-    if (!nav?.goToIndex) return;
-    if (index === 0) {
-      const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-      if (homeIdx !== -1) nav.goToIndex(homeIdx);
-    } else if (index === 1) {
-      const planIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Piano 12 giorni"));
-      if (planIdx !== -1) nav.goToIndex(planIdx);
-    } else if (index === 2) {
-      const simIdx = FLAT_SCREENS.findIndex(s => s.day === "Giorno 8" && s.label.includes("Sessione · intro"));
-      if (simIdx !== -1) nav.goToIndex(simIdx);
-    } else if (index === 3) {
-      const scoreIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Readiness score"));
-      if (scoreIdx !== -1) nav.goToIndex(scoreIdx);
-    }
-  };
-
   return (
     <div style={{
       backgroundColor: WHITE,
@@ -257,16 +262,13 @@ function TabBar({ active }: { active: number }) {
       flexShrink: 0,
     }}>
       {TABS.map((tab, i) => (
-        <div key={tab.label} 
-          onClick={() => handleTabClick(i)}
-          style={{
-            flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-            gap: 4, padding: "4px 0", cursor: "pointer",
-          }}
-        >
+        <div key={tab.label} style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+          gap: 4, padding: "4px 0",
+        }}>
           <tab.Icon active={active === i} />
           <span style={{
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: active === i ? 600 : 400,
             color: active === i ? BLACK : GRAY,
           }}>
@@ -280,7 +282,6 @@ function TabBar({ active }: { active: number }) {
 
 // ───────────────────────── HOME SCREEN ─────────────────────────
 function HomeScreen() {
-  const nav = useProtoNav();
   const score = 42;
   const daysLeft = 12;
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -305,24 +306,17 @@ function HomeScreen() {
           </div>
         </div>
 
-        <div 
-          onClick={() => {
-            const planIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Piano 12 giorni"));
-            if (planIdx !== -1 && nav?.goToIndex) nav.goToIndex(planIdx);
-          }}
-          style={{
-            margin: "20px 16px 0", backgroundColor: BLACK,
-            borderRadius: 24, padding: "20px 18px 22px",
-            cursor: "pointer",
-          }}
-        >
+        <div style={{
+          margin: "20px 16px 0", backgroundColor: BLACK,
+          borderRadius: 24, padding: "20px 18px 22px",
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>
                 Prossimo evento
               </div>
               <div style={{ fontSize: 19, fontWeight: 700, color: WHITE, letterSpacing: "-0.02em", marginTop: 6, lineHeight: 1.15 }}>
-                Talent Garden Talk · AI & Lavoro
+                Talent Garden<br />Talk · AI & Lavoro
               </div>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -349,18 +343,11 @@ function HomeScreen() {
           </div>
         </div>
 
-        <div 
-          onClick={() => {
-            const idx = FLAT_SCREENS.findIndex(s => s.day === "Giorno 3" && s.label.includes("Sessione · intro"));
-            if (idx !== -1 && nav?.goToIndex) nav.goToIndex(idx);
-          }}
-          style={{
-            margin: "10px 16px 0", backgroundColor: ACCENT,
-            borderRadius: 20, padding: "16px 18px",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            cursor: "pointer",
-          }}
-        >
+        <div style={{
+          margin: "10px 16px 0", backgroundColor: ACCENT,
+          borderRadius: 20, padding: "16px 18px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 40, height: 40, borderRadius: "50%", backgroundColor: BLACK,
@@ -449,24 +436,17 @@ function HomeScreen() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "10px 16px 0" }}>
-          <div 
-            onClick={() => {
-              const idx = FLAT_SCREENS.findIndex(s => s.day === "Giorno 1" && s.label.includes("Sessione · intro"));
-              if (idx !== -1 && nav?.goToIndex) nav.goToIndex(idx);
-            }}
-            style={{
-              backgroundColor: WHITE, border: `1px solid ${BORDER}`,
-              borderRadius: 18, padding: "14px 14px 16px", minHeight: 124,
-              display: "flex", flexDirection: "column", justifyContent: "space-between",
-              cursor: "pointer",
-            }}
-          >
+          <div style={{
+            backgroundColor: WHITE, border: `1px solid ${BORDER}`,
+            borderRadius: 18, padding: "14px 14px 16px", minHeight: 124,
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+          }}>
             <div>
               <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 Check-in
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: BLACK, letterSpacing: "-0.01em", marginTop: 6, lineHeight: 1.25 }}>
-                2 minuti per tenere traccia
+                2 minuti<br />per tenere traccia
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -475,24 +455,17 @@ function HomeScreen() {
             </div>
           </div>
 
-          <div 
-            onClick={() => {
-              const idx = FLAT_SCREENS.findIndex(s => s.day === "Giorno 8" && s.label.includes("Sessione · intro"));
-              if (idx !== -1 && nav?.goToIndex) nav.goToIndex(idx);
-            }}
-            style={{
-              backgroundColor: BLACK, borderRadius: 18,
-              padding: "14px 14px 16px", minHeight: 124,
-              display: "flex", flexDirection: "column", justifyContent: "space-between",
-              cursor: "pointer",
-            }}
-          >
+          <div style={{
+            backgroundColor: BLACK, borderRadius: 18,
+            padding: "14px 14px 16px", minHeight: 124,
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+          }}>
             <div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 Simula
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: WHITE, letterSpacing: "-0.01em", marginTop: 6, lineHeight: 1.25 }}>
-                Elevator pitch · 60 secondi
+                Elevator pitch<br />· 60 secondi
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -550,38 +523,24 @@ function HomeScreen() {
 
 // ───────────────────────── ABOUT YOU — shared question card ─────────────────────────
 function AboutQuestion({
-  step, total, eyebrow, question, options, selected: initialSelected, ctaLabel = "Avanti →",
+  step, total, eyebrow, question, options, selected, ctaLabel = "Continua",
 }: {
   step: number; total: number;
   eyebrow: string; question: string;
   options: { label: string; sub?: string; selected?: boolean }[];
   selected?: number; ctaLabel?: string;
 }) {
-  const nav = useProtoNav();
-  const [selected, setSelected] = useState<number | undefined>(initialSelected);
-
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       {/* Top: close + progress bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0 18px" }}>
-        <button 
-          onClick={() => nav?.goPrev()}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
-        >
-          <ArrowLeft />
-        </button>
+        <CloseIcon />
         <div style={{ flex: 1, height: 8, backgroundColor: BORDER, borderRadius: 100, overflow: "hidden" }}>
           <div style={{
             width: `${(step / total) * 100}%`, height: "100%",
             backgroundColor: BLACK, borderRadius: 100,
           }} />
         </div>
-        <button 
-          onClick={() => nav?.goToIndex?.(10)}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
-        >
-          <CloseIcon />
-        </button>
       </div>
 
       <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.18em", textTransform: "uppercase", marginTop: 8 }}>
@@ -599,20 +558,14 @@ function AboutQuestion({
         {options.map((o, i) => {
           const on = selected === i;
           return (
-            <button 
-              key={o.label} 
-              onClick={() => setSelected(i)}
-              style={{
-                padding: "16px 18px",
-                backgroundColor: on ? BLACK : WHITE,
-                color: on ? WHITE : BLACK,
-                border: `1.5px solid ${on ? BLACK : BORDER}`,
-                borderRadius: 16,
-                display: "flex", alignItems: "center", gap: 14,
-                cursor: "pointer", fontFamily: "inherit",
-                textAlign: "left", width: "100%",
-              }}
-            >
+            <div key={o.label} style={{
+              padding: "16px 18px",
+              backgroundColor: on ? BLACK : WHITE,
+              color: on ? WHITE : BLACK,
+              border: `1.5px solid ${on ? BLACK : BORDER}`,
+              borderRadius: 16,
+              display: "flex", alignItems: "center", gap: 14,
+            }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                 backgroundColor: on ? ACCENT : SURFACE,
@@ -644,21 +597,18 @@ function AboutQuestion({
                   <CheckIcon color={BLACK} />
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
 
       <div style={{ paddingTop: 24, paddingBottom: 28 }}>
-        <button 
-          onClick={() => selected !== undefined && nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: selected !== undefined ? BLACK : "#C9C8C2",
-            color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: selected !== undefined ? "pointer" : "not-allowed",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: selected !== undefined ? BLACK : "#C9C8C2",
+          color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+        }}>
           {ctaLabel}
         </button>
       </div>
@@ -737,16 +687,10 @@ function AboutQ4() {
 
 // ───────────────────────── ONBOARDING 1 — WELCOME ─────────────────────────
 function OnboardingWelcome() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ padding: "8px 0", display: "flex", justifyContent: "flex-end" }}>
-        <div 
-          onClick={() => nav?.goToIndex?.(10)}
-          style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em", cursor: "pointer" }}
-        >
-          Salta
-        </div>
+        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Salta</div>
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", overflowY: "auto", minHeight: 0, textAlign: "center" }}>
@@ -778,15 +722,12 @@ function OnboardingWelcome() {
       </div>
 
       <div style={{ paddingBottom: 28 }}>
-        <button
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        }}>
           Inizia il tour <ArrowRight color={WHITE} size={16} />
         </button>
         <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: GRAY }}>
@@ -807,7 +748,6 @@ function OnboardingWelcome() {
 
 // ───────────────────────── ONBOARDING 2 — HOW IT WORKS ─────────────────────────
 function OnboardingHowItWorks() {
-  const nav = useProtoNav();
   const steps = [
     { n: "01", t: "Dichiari il prossimo evento", d: "Data e tipo. Niente argomenti — li capiamo dal contesto." },
     { n: "02", t: "Ricevi un piano", d: "Micro-sessioni da 10–15 minuti al giorno fino al giorno X." },
@@ -816,9 +756,7 @@ function OnboardingHowItWorks() {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
+        <ArrowLeft />
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>2 / 6</div>
       </div>
 
@@ -859,14 +797,11 @@ function OnboardingHowItWorks() {
       </div>
 
       <div style={{ paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+        }}>
           Avanti
         </button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
@@ -884,13 +819,10 @@ function OnboardingHowItWorks() {
 
 // ───────────────────────── ONBOARDING 3 — SOURCES ─────────────────────────
 function OnboardingSources() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
+        <ArrowLeft />
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>3 / 6</div>
       </div>
 
@@ -953,14 +885,11 @@ function OnboardingSources() {
       </div>
 
       <div style={{ paddingBottom: 28, paddingTop: 16 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+        }}>
           Avanti
         </button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
@@ -978,13 +907,10 @@ function OnboardingSources() {
 
 // ───────────────────────── ONBOARDING 4 — READINESS SCORE ─────────────────────────
 function OnboardingScore() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", backgroundColor: BLACK }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft color={WHITE} />
-        </button>
+        <ArrowLeft color={WHITE} />
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>4 / 6</div>
       </div>
 
@@ -1025,14 +951,11 @@ function OnboardingScore() {
       </div>
 
       <div style={{ paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 15, fontWeight: 700, cursor: "pointer",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 15, fontWeight: 700, cursor: "pointer",
+        }}>
           Avanti
         </button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
@@ -1050,13 +973,10 @@ function OnboardingScore() {
 
 // ───────────────────────── ONBOARDING 5 — MEMORY ─────────────────────────
 function OnboardingMemory() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
+        <ArrowLeft />
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>5 / 6</div>
       </div>
 
@@ -1108,14 +1028,11 @@ function OnboardingMemory() {
       </div>
 
       <div style={{ paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+        }}>
           Dichiara il tuo primo evento
         </button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
@@ -1133,13 +1050,10 @@ function OnboardingMemory() {
 
 // ───────────────────────── ONBOARDING 6 — DECLARE EVENT ─────────────────────────
 function OnboardingDeclare() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
+        <ArrowLeft />
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>6 / 6</div>
       </div>
 
@@ -1225,15 +1139,12 @@ function OnboardingDeclare() {
       </div>
 
       <div style={{ paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 15, fontWeight: 700, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 15, fontWeight: 700, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        }}>
           Costruisci il mio piano <ArrowRight size={16} />
         </button>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
@@ -1251,7 +1162,6 @@ function OnboardingDeclare() {
 
 // ───────────────────────── PLAN — 12 GIORNI ─────────────────────────
 function PlanScreen() {
-  const nav = useProtoNav();
   const phases = [
     {
       title: "Fase 1 · Basi",
@@ -1290,15 +1200,7 @@ function PlanScreen() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 16px" }}>
-          <button 
-            onClick={() => {
-              const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-              if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-            }} 
-            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
-          >
-            <ArrowLeft />
-          </button>
+          <ArrowLeft />
           <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Piano · 12 giorni</div>
           <MenuIcon />
         </div>
@@ -1307,7 +1209,7 @@ function PlanScreen() {
           Obiettivo
         </div>
         <div style={{ fontSize: 24, fontWeight: 700, color: BLACK, letterSpacing: "-0.025em", lineHeight: 1.15, marginTop: 6 }}>
-          Talent Garden, sapendo parlare di AI.
+          Talent Garden,<br />sapendo parlare di AI.
         </div>
 
         <div style={{
@@ -1333,50 +1235,36 @@ function PlanScreen() {
         <div style={{ marginTop: 20, marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
           {phases.map((phase) => (
             <Accordion key={phase.title} label={phase.title} hint={phase.hint} defaultOpen={phase.openByDefault}>
-              {phase.days.map((d, i, arr) => {
-                const dayIntroIdx = FLAT_SCREENS.findIndex(
-                  (s) => s.day === `Giorno ${d.d}` && s.label.includes("Sessione · intro")
-                );
-                return (
-                  <div 
-                    key={d.d}
-                    onClick={() => {
-                      if (dayIntroIdx !== -1 && nav?.goToIndex) {
-                        nav.goToIndex(dayIntroIdx);
-                      }
-                    }}
-                    style={{
-                      display: "flex", gap: 12, alignItems: "center",
-                      padding: "10px 0",
-                      borderBottom: i < arr.length - 1 ? `0.5px solid ${BORDER}` : "none",
-                      cursor: dayIntroIdx !== -1 ? "pointer" : "default",
-                    }}
-                  >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                      backgroundColor: d.done ? BLACK : d.current ? ACCENT : SURFACE,
-                      border: d.current ? "none" : `1px solid ${BORDER}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 600, color: d.done ? WHITE : BLACK,
-                    }}>
-                      {d.done ? <CheckIcon /> : d.d}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: d.current ? 600 : 500,
-                        color: d.done ? GRAY : BLACK, letterSpacing: "-0.01em",
-                        textDecoration: d.done ? "line-through" : "none",
-                      }}>
-                        {d.t}
-                      </div>
-                      <div style={{ fontSize: 11, color: GRAY, marginTop: 2 }}>
-                        {d.mins} min{d.milestone && <span style={{ color: AMBER }}> · milestone</span>}
-                      </div>
-                    </div>
-                    {d.current && <ArrowRight size={16} />}
+              {phase.days.map((d, i, arr) => (
+                <div key={d.d} style={{
+                  display: "flex", gap: 12, alignItems: "center",
+                  padding: "10px 0",
+                  borderBottom: i < arr.length - 1 ? `0.5px solid ${BORDER}` : "none",
+                }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                    backgroundColor: d.done ? BLACK : d.current ? ACCENT : SURFACE,
+                    border: d.current ? "none" : `1px solid ${BORDER}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 600, color: d.done ? WHITE : BLACK,
+                  }}>
+                    {d.done ? <CheckIcon /> : d.d}
                   </div>
-                );
-              })}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: d.current ? 600 : 500,
+                      color: d.done ? GRAY : BLACK, letterSpacing: "-0.01em",
+                      textDecoration: d.done ? "line-through" : "none",
+                    }}>
+                      {d.t}
+                    </div>
+                    <div style={{ fontSize: 11, color: GRAY, marginTop: 2 }}>
+                      {d.mins} min{d.milestone && <span style={{ color: AMBER }}> · milestone</span>}
+                    </div>
+                  </div>
+                  {d.current && <ArrowRight size={16} />}
+                </div>
+              ))}
             </Accordion>
           ))}
         </div>
@@ -1388,22 +1276,14 @@ function PlanScreen() {
 
 // ───────────────────────── SESSION DETAIL ─────────────────────────
 function SessionDetailScreen() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 24px" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
+        <ArrowLeft />
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Giorno 3 di 12</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
+        <CloseIcon />
       </div>
- 
+
       <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.16em", textTransform: "uppercase" }}>
         Sessione di oggi · 15 min
       </div>
@@ -1413,7 +1293,7 @@ function SessionDetailScreen() {
       <div style={{ fontSize: 13, color: GRAY, lineHeight: 1.55, marginTop: 14 }}>
         Una base che ti serve per non rimanere fermo se al talk qualcuno dice "modello fondazionale". Niente formule — solo l'idea.
       </div>
- 
+
       {/* Steps */}
       <div style={{ marginTop: 24 }}>
         {[
@@ -1450,20 +1330,14 @@ function SessionDetailScreen() {
           </div>
         ))}
       </div>
- 
+
       <div style={{ paddingTop: 20, paddingBottom: 28 }}>
-        <button 
-          onClick={() => {
-            const idx = FLAT_SCREENS.findIndex(s => s.day === "Giorno 3" && s.label.includes("Sessione · intro"));
-            if (idx !== -1 && nav?.goToIndex) nav.goToIndex(idx);
-          }}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 15, fontWeight: 700, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 15, fontWeight: 700, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        }}>
           <PlayIcon /> Inizia la sessione
         </button>
       </div>
@@ -2132,20 +2006,11 @@ function QuizResultsScreen() {
 
 // ───────────────────────── PRE-EVENT — T-12h ─────────────────────────
 function PreEvent12h() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 20px" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Vigilia</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 20px" }}>
+        <MenuIcon />
+        <BellIcon badge />
       </div>
 
       <div style={{
@@ -2236,15 +2101,12 @@ function PreEvent12h() {
       </div>
 
       <div style={{ paddingTop: 20, paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 15, fontWeight: 700, cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 15, fontWeight: 700, cursor: "pointer",
+          fontFamily: "inherit",
+        }}>
           Apri la simulazione finale
         </button>
       </div>
@@ -2254,20 +2116,11 @@ function PreEvent12h() {
 
 // ───────────────────────── PRE-EVENT — T-2h ─────────────────────────
 function PreEvent2h() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 20px" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Ultimo Sprint</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 20px" }}>
+        <MenuIcon />
+        <BellIcon badge />
       </div>
 
       <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.18em", textTransform: "uppercase" }}>
@@ -2371,15 +2224,12 @@ function PreEvent2h() {
       </div>
 
       <div style={{ paddingTop: 22, paddingBottom: 28 }}>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            width: "100%", padding: "18px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
+        <button style={{
+          width: "100%", padding: "18px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 15, fontWeight: 600, cursor: "pointer",
+          fontFamily: "inherit",
+        }}>
           Inizia l'ultimo sprint
         </button>
       </div>
@@ -2389,22 +2239,21 @@ function PreEvent2h() {
 
 // ───────────────────────── PRE-EVENT — T-30min · READY MODE ─────────────────────────
 function PreEventReady() {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", backgroundColor: BLACK }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0 16px" }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft color={WHITE} />
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0 16px" }}>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500 }}>
           Ready mode
         </div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon color={WHITE} />
-        </button>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          fontSize: 11, color: WHITE, fontWeight: 500,
+          padding: "4px 10px",
+          border: "1px solid rgba(255,255,255,0.2)", borderRadius: 100,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: ACCENT }} />
+          T-30 min
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", paddingTop: 16 }}>
@@ -2412,7 +2261,7 @@ function PreEventReady() {
           fontSize: 38, fontWeight: 800, color: WHITE,
           letterSpacing: "-0.04em", lineHeight: 1, textTransform: "uppercase",
         }}>
-          Tutto quello che ti serve.
+          Tutto<br />quello che<br />ti serve.
         </div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 16, fontWeight: 300 }}>
           Tre cose, non di più. Apri se ti senti perso.
@@ -2497,18 +2346,12 @@ function PreEventReady() {
         }}>
           Silenzia 30 min
         </button>
-        <button 
-          onClick={() => {
-            const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-            if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-          }}
-          style={{
-            flex: 2, padding: "16px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 14, fontWeight: 700, cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
+        <button style={{
+          flex: 2, padding: "16px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 14, fontWeight: 700, cursor: "pointer",
+          fontFamily: "inherit",
+        }}>
           Sono pronto
         </button>
       </div>
@@ -2518,26 +2361,6 @@ function PreEventReady() {
 
 // ───────────────────────── DAY SESSION TEMPLATES ─────────────────────────
 type QuizMode = "text" | "voice-opt" | "voice" | "simulation";
-
-interface MiniGameConfig {
-  type: "drag-match" | "sequence" | "true-false" | "fill-blank" | "scramble";
-  pairs?: { term: string; definition: string }[];
-  items?: { id: string; text: string }[];
-  correctOrder?: string[];
-  statements?: { text: string; isTrue: boolean; explanation: string }[];
-  sentences?: { before: string; answer: string; after: string; options: string[] }[];
-  target?: string;
-  hint?: string;
-}
-
-interface BriefingItem {
-  text: string;
-  videoUrl?: string;
-  conceptTitle?: string;
-  sourceName?: string;
-  sourceYear?: number;
-  miniGame?: MiniGameConfig;
-}
 
 interface DayTopic {
   day: number;          // numero di giorno (1..10)
@@ -2550,1048 +2373,12 @@ interface DayTopic {
   mode: QuizMode;
   scoreBefore: number;
   scoreAfter: number;
-  briefings?: BriefingItem[];
-}
-
-// ───────────────────────── VIDEO PILL COMPONENT ─────────────────────────
-interface VideoPillProps {
-  videoUrl: string;
-  conceptNumber: number;
-  totalConcepts: number;
-  conceptTitle: string;
-  sourceName: string;
-  sourceYear: number;
-  onNext: () => void;
-  onSaveVoice?: () => void;
-}
-
-function VideoPill({
-  videoUrl,
-  conceptNumber,
-  totalConcepts,
-  conceptTitle,
-  sourceName,
-  sourceYear,
-  onNext,
-  onSaveVoice,
-}: VideoPillProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [progress, setProgress] = useState(0);
-  const [showCTA, setShowCTA] = useState(false);
-  const [canTapToSkip, setCanTapToSkip] = useState(false);
-
-  useEffect(() => {
-    // Enable tap to skip after 3 seconds
-    const timer = setTimeout(() => {
-      setCanTapToSkip(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    if (video && video.duration) {
-      const currentProgress = video.currentTime / video.duration;
-      setProgress(currentProgress * 100);
-      if (currentProgress >= 0.85) {
-        setShowCTA(true);
-      }
-    }
-  };
-
-  const handleVideoClick = () => {
-    if (canTapToSkip) {
-      setShowCTA(true);
-    }
-  };
-
-  return (
-    <div
-      onClick={handleVideoClick}
-      style={{
-        position: "relative",
-        width: "100%",
-        aspectRatio: "9/16",
-        borderRadius: "20px",
-        overflow: "hidden",
-        backgroundColor: "#0A0A0A",
-        cursor: "pointer",
-        userSelect: "none",
-      }}
-    >
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        onTimeUpdate={handleTimeUpdate}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-        }}
-      />
-      {/* Bottom overlay with linear gradient */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(to top, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.6) 30%, transparent 65%)",
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          padding: "20px 16px 24px 16px",
-        }}
-      >
-        <div style={{ pointerEvents: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 54 }}>
-          {/* Concept Title */}
-          <div
-            style={{
-              fontFamily: "Inter, 'Helvetica Neue', sans-serif",
-              fontSize: "22px",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              color: "#FFFFFF",
-              maxWidth: "85%",
-            }}
-          >
-            {conceptTitle}
-          </div>
-
-          {/* Concept Label */}
-          <div
-            style={{
-              fontFamily: "Inter, 'Helvetica Neue', sans-serif",
-              fontSize: "10px",
-              fontWeight: 400,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.5)",
-              marginTop: 4,
-            }}
-          >
-            CONCETTO {conceptNumber} / {totalConcepts}
-          </div>
-
-          {/* Source Badge */}
-          <div style={{ display: "flex", marginTop: 4 }}>
-            <div
-              style={{
-                fontFamily: "Inter, 'Helvetica Neue', sans-serif",
-                fontSize: "9px",
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.7)",
-                backgroundColor: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(8px)",
-                padding: "4px 10px",
-                borderRadius: "100px",
-              }}
-            >
-              {sourceName} · {sourceYear}
-            </div>
-          </div>
-        </div>
-
-        {/* Buttons Flex Row */}
-        <div
-          style={{
-            pointerEvents: "auto",
-            display: "flex",
-            gap: 10,
-            width: "100%",
-            zIndex: 10,
-            marginBottom: 4,
-          }}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onSaveVoice) onSaveVoice();
-            }}
-            style={{
-              flex: 1,
-              padding: "14px 0",
-              backgroundColor: "transparent",
-              border: "1px solid rgba(255,255,255,0.25)",
-              color: "#FFFFFF",
-              borderRadius: 100,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              backdropFilter: "blur(8px)",
-              transition: "all 0.2s",
-            }}
-          >
-            Salva nota vocale
-          </button>
-          
-          {showCTA && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNext();
-              }}
-              style={{
-                flex: 2,
-                padding: "14px 0",
-                border: "none",
-                backgroundColor: "#E8FF5A",
-                color: "#0A0A0A",
-                borderRadius: 100,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                animation: "fadeIn 0.3s ease-out",
-              }}
-            >
-              Concetto successivo →
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          height: "3px",
-          backgroundColor: "rgba(255,255,255,0.15)",
-        }}
-      >
-        <div
-          style={{
-            height: "100%",
-            width: `${progress}%`,
-            backgroundColor: "#E8FF5A",
-            transition: "width 0.1s linear",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ───────────────────────── MINI-GAMES ─────────────────────────
-
-// GAME 1: DragMatchGame
-interface DragMatchGameProps {
-  pairs: { term: string; definition: string }[];
-  onComplete: (score: number) => void;
-}
-
-function DragMatchGame({ pairs, onComplete }: DragMatchGameProps) {
-  const [shuffledTerms, setShuffledTerms] = useState<string[]>([]);
-  const [shuffledDefs, setShuffledDefs] = useState<string[]>([]);
-  const [matches, setMatches] = useState<Record<string, string>>({}); // definition -> term
-  const [attempts, setAttempts] = useState<Record<string, number>>({}); // term -> attemptCount
-  const [shakingTerm, setShakingTerm] = useState<string | null>(null);
-  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
-
-  useEffect(() => {
-    const terms = pairs.map((p) => p.term).sort(() => Math.random() - 0.5);
-    const defs = pairs.map((p) => p.definition).sort(() => Math.random() - 0.5);
-    setShuffledTerms(terms);
-    setShuffledDefs(defs);
-  }, [pairs]);
-
-  const handleMatch = (term: string, definition: string) => {
-    const pair = pairs.find((p) => p.term === term);
-    const isCorrect = pair && pair.definition === definition;
-
-    setAttempts((prev) => ({
-      ...prev,
-      [term]: (prev[term] || 0) + 1,
-    }));
-
-    if (isCorrect) {
-      setMatches((prev) => {
-        const next = { ...prev, [definition]: term };
-        const matchedCount = Object.keys(next).length;
-        if (matchedCount === pairs.length) {
-          let firstAttemptCorrect = 0;
-          pairs.forEach((p) => {
-            const termAttempts = (attempts[p.term] || 0) + (p.term === term ? 1 : 0);
-            if (termAttempts === 1) {
-              firstAttemptCorrect++;
-            }
-          });
-          const score = Math.round((firstAttemptCorrect / pairs.length) * 100);
-          setTimeout(() => onComplete(score), 800);
-        }
-        return next;
-      });
-      setSelectedTerm(null);
-    } else {
-      setShakingTerm(term);
-      setTimeout(() => setShakingTerm(null), 200);
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent, term: string) => {
-    e.dataTransfer.setData("text/plain", term);
-  };
-
-  const handleDrop = (e: React.DragEvent, definition: string) => {
-    e.preventDefault();
-    const term = e.dataTransfer.getData("text/plain");
-    if (term) {
-      handleMatch(term, definition);
-    }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        Trascina o clicca per accoppiare
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 12 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {shuffledTerms.map((term) => {
-            const isMatched = Object.values(matches).includes(term);
-            const isShaking = shakingTerm === term;
-            const isSelected = selectedTerm === term;
-
-            return (
-              <div
-                key={term}
-                draggable={!isMatched}
-                onDragStart={(e) => handleDragStart(e, term)}
-                onClick={() => !isMatched && setSelectedTerm(isSelected ? null : term)}
-                style={{
-                  background: isMatched ? "#EBF5EF" : isSelected ? "#E8FF5A" : "#FBFAF6",
-                  border: `1px solid ${isMatched ? GREEN : isSelected ? BLACK : BORDER}`,
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: isMatched ? GREEN : "#0A0A0A",
-                  cursor: isMatched ? "default" : "grab",
-                  opacity: isMatched ? 0.6 : 1,
-                  transform: isShaking ? "translateX(0px)" : "none",
-                  animation: isShaking ? "shake 0.2s ease-in-out infinite" : "none",
-                  userSelect: "none",
-                }}
-              >
-                {term}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {shuffledDefs.map((def) => {
-            const matchedTerm = matches[def];
-            const hasMatch = !!matchedTerm;
-
-            return (
-              <div
-                key={def}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, def)}
-                onClick={() => selectedTerm && handleMatch(selectedTerm, def)}
-                style={{
-                  minHeight: 40,
-                  border: hasMatch ? `2px solid ${GREEN}` : "2px dashed #E4E3DD",
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 12,
-                  lineHeight: 1.35,
-                  backgroundColor: hasMatch ? "#EBF5EF" : "#FFFFFF",
-                  color: hasMatch ? GREEN : "#0A0A0A",
-                  transition: "all 0.2s",
-                  cursor: selectedTerm && !hasMatch ? "pointer" : "default",
-                }}
-              >
-                {hasMatch ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: GREEN }}>
-                      {matchedTerm}
-                    </span>
-                    <span>{def}</span>
-                  </div>
-                ) : (
-                  <span style={{ color: GRAY }}>{def}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// GAME 2: SequenceOrderGame
-interface SequenceOrderGameProps {
-  items: { id: string; text: string }[];
-  correctOrder: string[];
-  onComplete: (score: number) => void;
-}
-
-function SequenceOrderGame({ items, correctOrder, onComplete }: SequenceOrderGameProps) {
-  const [list, setList] = useState<{ id: string; text: string }[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [hasMoved, setHasMoved] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  useEffect(() => {
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    setList(shuffled);
-  }, [items]);
-
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (index: number) => {
-    if (draggedIndex === null || draggedIndex === index) return;
-    const newList = [...list];
-    const draggedItem = newList[draggedIndex];
-    newList.splice(draggedIndex, 1);
-    newList.splice(index, 0, draggedItem);
-    setDraggedIndex(index);
-    setList(newList);
-    setHasMoved(true);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  const handleConfirm = () => {
-    setIsSubmitted(true);
-    let correctCount = 0;
-    list.forEach((item, index) => {
-      if (correctOrder[index] === item.id) {
-        correctCount++;
-      }
-    });
-    const score = Math.round((correctCount / items.length) * 100);
-    setTimeout(() => onComplete(score), 2000);
-  };
-
-  const moveItem = (fromIndex: number, direction: "up" | "down") => {
-    const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
-    if (toIndex < 0 || toIndex >= list.length) return;
-    const newList = [...list];
-    const item = newList[fromIndex];
-    newList.splice(fromIndex, 1);
-    newList.splice(toIndex, 0, item);
-    setList(newList);
-    setHasMoved(true);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        Ordina la sequenza corretta
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {list.map((item, index) => {
-          const isDragging = draggedIndex === index;
-          const isCorrect = correctOrder[index] === item.id;
-
-          return (
-            <div
-              key={item.id}
-              draggable={!isSubmitted}
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                handleDragOver(index);
-              }}
-              onDragEnd={handleDragEnd}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: isDragging ? "#FBFAF6" : "#FFFFFF",
-                border: isSubmitted
-                  ? `1px solid ${isCorrect ? GREEN : "#D32F2F"}`
-                  : `1px solid ${BORDER}`,
-                borderRadius: 12,
-                padding: "12px 16px",
-                boxShadow: isDragging ? "0 4px 16px rgba(0,0,0,0.12)" : "none",
-                transform: isDragging ? "scale(1.02)" : "none",
-                transition: "box-shadow 0.2s, transform 0.2s",
-                cursor: isSubmitted ? "default" : "grab",
-              }}
-            >
-              {!isSubmitted && (
-                <div style={{ display: "flex", alignItems: "center", cursor: "grab" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E4E3DD" strokeWidth="2.5">
-                    <line x1="4" y1="8" x2="20" y2="8" />
-                    <line x1="4" y1="12" x2="20" y2="12" />
-                    <line x1="4" y1="16" x2="20" y2="16" />
-                  </svg>
-                </div>
-              )}
-              <div style={{ flex: 1, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 500, color: BLACK }}>
-                {item.text}
-              </div>
-              {isSubmitted ? (
-                isCorrect ? (
-                  <span style={{ color: GREEN, fontWeight: "bold" }}>✓</span>
-                ) : (
-                  <span style={{ color: "#D32F2F", fontWeight: "bold" }}>✕</span>
-                )
-              ) : (
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button
-                    disabled={index === 0}
-                    onClick={() => moveItem(index, "up")}
-                    style={{
-                      border: "none",
-                      backgroundColor: "transparent",
-                      color: index === 0 ? BORDER : GRAY,
-                      cursor: index === 0 ? "default" : "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    disabled={index === list.length - 1}
-                    onClick={() => moveItem(index, "down")}
-                    style={{
-                      border: "none",
-                      backgroundColor: "transparent",
-                      color: index === list.length - 1 ? BORDER : GRAY,
-                      cursor: index === list.length - 1 ? "default" : "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    ▼
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {hasMoved && !isSubmitted && (
-        <button
-          onClick={handleConfirm}
-          style={{
-            width: "100%",
-            padding: "14px 0",
-            backgroundColor: BLACK,
-            color: WHITE,
-            border: "none",
-            borderRadius: 100,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          Conferma ordine
-        </button>
-      )}
-    </div>
-  );
-}
-
-// GAME 3: TrueFalseGame
-interface TrueFalseGameProps {
-  statements: { text: string; isTrue: boolean; explanation: string }[];
-  onComplete: (score: number) => void;
-}
-
-function TrueFalseGame({ statements, onComplete }: TrueFalseGameProps) {
-  const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<boolean | null>(null);
-  const [scoreCount, setScoreCount] = useState(0);
-  const [showFeedback, setShowFeedback] = useState(false);
-
-  const current = statements[index];
-
-  const handleAnswer = (answer: boolean) => {
-    setSelected(answer);
-    setShowFeedback(true);
-    const isCorrect = answer === current.isTrue;
-    if (isCorrect) {
-      setScoreCount((prev) => prev + 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (index < statements.length - 1) {
-      setIndex((prev) => prev + 1);
-      setSelected(null);
-      setShowFeedback(false);
-    } else {
-      const finalScore = Math.round((scoreCount / statements.length) * 100);
-      onComplete(finalScore);
-    }
-  };
-
-  const isAnswerCorrect = selected === current?.isTrue;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-        {statements.map((_, idx) => (
-          <div
-            key={idx}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              backgroundColor: idx < index ? BLACK : idx === index && selected !== null ? BLACK : BORDER,
-            }}
-          />
-        ))}
-      </div>
-      {current && (
-        <>
-          <div
-            style={{
-              textAlign: "center",
-              fontFamily: "Inter, sans-serif",
-              fontSize: "15px",
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              color: showFeedback ? (isAnswerCorrect ? "#1A6B3C" : "#7A5700") : "#0A0A0A",
-              padding: "24px 16px",
-              borderRadius: 16,
-              border: `1px solid ${showFeedback ? (isAnswerCorrect ? GREEN : AMBER) : BORDER}`,
-              backgroundColor: showFeedback ? (isAnswerCorrect ? "#EBF5EF" : "#FDF6E3") : "#FFFFFF",
-              transition: "all 0.3s",
-            }}
-          >
-            {current.text}
-          </div>
-          {!showFeedback ? (
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={() => handleAnswer(true)}
-                style={{
-                  flex: 1,
-                  padding: "12px 0",
-                  borderRadius: 100,
-                  backgroundColor: "#EBF5EF",
-                  color: "#1A6B3C",
-                  border: `1px solid ${GREEN}`,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Vero
-              </button>
-              <button
-                onClick={() => handleAnswer(false)}
-                style={{
-                  flex: 1,
-                  padding: "12px 0",
-                  borderRadius: 100,
-                  backgroundColor: "#FDF6E3",
-                  color: "#7A5700",
-                  border: `1px solid ${AMBER}`,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Falso
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                  color: isAnswerCorrect ? GREEN : AMBER,
-                  padding: "8px 12px",
-                }}
-              >
-                {current.explanation}
-              </div>
-              <button
-                onClick={handleNext}
-                style={{
-                  width: "100%",
-                  padding: "14px 0",
-                  backgroundColor: BLACK,
-                  color: WHITE,
-                  border: "none",
-                  borderRadius: 100,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                {index < statements.length - 1 ? "Prossima →" : "Termina gioco →"}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// GAME 4: FillBlankGame
-interface FillBlankGameProps {
-  sentences: { before: string; answer: string; after: string; options: string[] }[];
-  onComplete: (score: number) => void;
-}
-
-function FillBlankGame({ sentences, onComplete }: FillBlankGameProps) {
-  const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [shakingOption, setShakingOption] = useState<string | null>(null);
-  const [firstAttemptCorrectCount, setFirstAttemptCorrectCount] = useState(0);
-  const [hasFailedThisOne, setHasFailedThisOne] = useState(false);
-
-  const current = sentences[index];
-
-  const handleSelect = (option: string) => {
-    if (selected === current.answer) return;
-    if (option === current.answer) {
-      setSelected(option);
-      if (!hasFailedThisOne) {
-        setFirstAttemptCorrectCount((prev) => prev + 1);
-      }
-    } else {
-      setHasFailedThisOne(true);
-      setShakingOption(option);
-      setTimeout(() => setShakingOption(null), 400);
-    }
-  };
-
-  const handleNext = () => {
-    if (index < sentences.length - 1) {
-      setIndex((prev) => prev + 1);
-      setSelected(null);
-      setHasFailedThisOne(false);
-    } else {
-      const score = Math.round((firstAttemptCorrectCount / sentences.length) * 100);
-      onComplete(score);
-    }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        Riempi lo spazio vuoto
-      </div>
-      {current && (
-        <>
-          <div
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: "15px",
-              lineHeight: 1.6,
-              color: BLACK,
-              padding: "16px 12px",
-              backgroundColor: SURFACE,
-              border: `1px solid ${BORDER}`,
-              borderRadius: 12,
-            }}
-          >
-            {current.before}
-            <span
-              style={{
-                borderBottom: `2px solid ${selected ? GREEN : BORDER}`,
-                minWidth: "80px",
-                display: "inline-block",
-                textAlign: "center",
-                fontWeight: 600,
-                color: selected ? GREEN : "transparent",
-                padding: "0 6px",
-                margin: "0 6px",
-              }}
-            >
-              {selected || "________"}
-            </span>
-            {current.after}
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-            {current.options.map((opt) => {
-              const isCorrect = opt === current.answer;
-              const isShaking = shakingOption === opt;
-              const isSolved = selected === current.answer;
-
-              let bg = "#FBFAF6";
-              let bc = BORDER;
-              let fc = BLACK;
-
-              if (isSolved && isCorrect) {
-                bg = "#EBF5EF";
-                bc = GREEN;
-                fc = GREEN;
-              } else if (isShaking) {
-                bg = "#FDF6E3";
-                bc = AMBER;
-                fc = AMBER;
-              }
-
-              return (
-                <button
-                  key={opt}
-                  onClick={() => handleSelect(opt)}
-                  disabled={isSolved}
-                  style={{
-                    backgroundColor: bg,
-                    border: `1px solid ${bc}`,
-                    color: fc,
-                    borderRadius: 100,
-                    padding: "8px 16px",
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: isSolved ? "default" : "pointer",
-                    animation: isShaking ? "shake 0.2s ease-in-out infinite" : "none",
-                    transition: "background-color 0.2s, border-color 0.2s",
-                  }}
-                >
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-          {selected === current.answer && (
-            <button
-              onClick={handleNext}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                backgroundColor: BLACK,
-                color: WHITE,
-                border: "none",
-                borderRadius: 100,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                marginTop: 12,
-              }}
-            >
-              {index < sentences.length - 1 ? "Prossima →" : "Termina gioco →"}
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// GAME 5: WordScrambleGame
-interface WordScrambleGameProps {
-  target: string;
-  hint: string;
-  onComplete: (score: number) => void;
-}
-
-function WordScrambleGame({ target, hint, onComplete }: WordScrambleGameProps) {
-  const correctWords = useRef(target.split(" "));
-  const [scrambledPool, setScrambledPool] = useState<{ word: string; id: string }[]>([]);
-  const [assembled, setAssembled] = useState<( { word: string; id: string } | null)[]>([]);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  useEffect(() => {
-    const pool = correctWords.current.map((w, index) => ({
-      word: w,
-      id: `${w}-${index}`,
-    })).sort(() => Math.random() - 0.5);
-
-    setScrambledPool(pool);
-    setAssembled(Array(correctWords.current.length).fill(null));
-  }, [target]);
-
-  const handlePoolTap = (item: { word: string; id: string }) => {
-    if (isSubmitted) return;
-    const firstEmptyIdx = assembled.findIndex((slot) => slot === null);
-    if (firstEmptyIdx !== -1) {
-      const nextAssembled = [...assembled];
-      nextAssembled[firstEmptyIdx] = item;
-      setAssembled(nextAssembled);
-      setScrambledPool((prev) => prev.filter((p) => p.id !== item.id));
-    }
-  };
-
-  const handleAssembledTap = (index: number) => {
-    if (isSubmitted) return;
-    const item = assembled[index];
-    if (item) {
-      setScrambledPool((prev) => [...prev, item]);
-      const nextAssembled = [...assembled];
-      nextAssembled[index] = null;
-      setAssembled(nextAssembled);
-    }
-  };
-
-  const handleConfirm = () => {
-    setIsSubmitted(true);
-    let correctCount = 0;
-    assembled.forEach((item, index) => {
-      if (item && item.word === correctWords.current[index]) {
-        correctCount++;
-      }
-    });
-    const score = Math.round((correctCount / correctWords.current.length) * 100);
-    setTimeout(() => onComplete(score), 2500);
-  };
-
-  const isFull = assembled.every((slot) => slot !== null);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 11, color: GRAY, fontFamily: "Inter, sans-serif" }}>
-        Ricostruisci la definizione: <span style={{ fontWeight: 500, color: BLACK }}>{hint}</span>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 6,
-          minHeight: 40,
-          padding: 8,
-          backgroundColor: SURFACE,
-          borderRadius: 8,
-          border: `1px solid ${BORDER}`,
-        }}
-      >
-        {scrambledPool.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => handlePoolTap(item)}
-            style={{
-              backgroundColor: "#FBFAF6",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 8,
-              padding: "8px 12px",
-              fontFamily: "Inter, sans-serif",
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
-              userSelect: "none",
-            }}
-          >
-            {item.word}
-          </div>
-        ))}
-        {scrambledPool.length === 0 && (
-          <div style={{ fontSize: 11, color: GRAY, fontStyle: "italic", margin: "auto" }}>
-            Tutti i chip posizionati
-          </div>
-        )}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, minHeight: 60 }}>
-        {assembled.map((slot, index) => {
-          const hasWord = slot !== null;
-          const isWordCorrect = slot?.word === correctWords.current[index];
-
-          let bg = "transparent";
-          let bc = "#E4E3DD";
-          let fc = BLACK;
-
-          if (isSubmitted && hasWord) {
-            bg = isWordCorrect ? "#EBF5EF" : "#FDF6E3";
-            bc = isWordCorrect ? GREEN : AMBER;
-            fc = isWordCorrect ? GREEN : AMBER;
-          } else if (hasWord) {
-            bg = "#FBFAF6";
-            bc = BORDER;
-          }
-
-          return (
-            <div
-              key={index}
-              onClick={() => hasWord && handleAssembledTap(index)}
-              style={{
-                borderBottom: hasWord ? "none" : "1.5px solid #E4E3DD",
-                border: hasWord ? `1px solid ${bc}` : undefined,
-                backgroundColor: bg,
-                color: fc,
-                borderRadius: hasWord ? 8 : 0,
-                padding: hasWord ? "8px 12px" : "8px 0",
-                minWidth: hasWord ? "auto" : 48,
-                textAlign: "center",
-                fontFamily: "Inter, sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: hasWord && !isSubmitted ? "pointer" : "default",
-                userSelect: "none",
-              }}
-            >
-              {slot?.word || ""}
-            </div>
-          );
-        })}
-      </div>
-      {isFull && !isSubmitted && (
-        <button
-          onClick={handleConfirm}
-          style={{
-            width: "100%",
-            padding: "14px 0",
-            backgroundColor: BLACK,
-            color: WHITE,
-            border: "none",
-            borderRadius: 100,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            marginTop: 12,
-          }}
-        >
-          Conferma
-        </button>
-      )}
-      {isSubmitted && (
-        <div style={{ fontSize: 12, color: GREEN, lineHeight: 1.45, fontStyle: "italic", marginTop: 8 }}>
-          Definizione corretta: {target}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function DayIntro({ t }: { t: DayTopic }) {
-  const nav = useProtoNav();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", overflowY: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
-        <button onClick={() => {
-          const planIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Piano 12 giorni"));
-          if (planIdx !== -1 && nav?.goToIndex) nav.goToIndex(planIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Sessione</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div style={{ paddingTop: 12, paddingBottom: 16 }}>
+      <div style={{ paddingTop: 28, paddingBottom: 16 }}>
         <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
           Giorno {t.day} · T-{t.daysToEvent}g · 15 min
         </div>
@@ -3620,14 +2407,11 @@ function DayIntro({ t }: { t: DayTopic }) {
         ))}
       </div>
 
-      <button
-        onClick={() => nav?.goNext()}
-        style={{
-          marginTop: 18, padding: "16px 0", border: "none",
-          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-          fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-        }}
-      >
+      <button style={{
+        marginTop: 18, padding: "16px 0", border: "none",
+        backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+        fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+      }}>
         Inizia ora →
       </button>
     </div>
@@ -3635,31 +2419,13 @@ function DayIntro({ t }: { t: DayTopic }) {
 }
 
 function DayBriefing({ t }: { t: DayTopic }) {
-  const nav = useProtoNav();
   const [step, setStep] = useState(0);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [checks, setChecks] = useState<(number | null)[]>([null, null, null]);
-  const [gameScores, setGameScores] = useState<Record<number, number>>({});
-  
-  // Format preference states
-  const [formatPref, setFormatPref] = useState<"video" | "text">(() => 
-    (localStorage.getItem("readiness_format_pref") as "video" | "text") || "video"
-  );
-  const [skipCount, setSkipCount] = useState<number>(() => 
-    parseInt(localStorage.getItem("readiness_video_skips") || "0", 10)
-  );
-
   const microTitles = ["Definizione netta", "Punto operativo", "Trappola da evitare"];
   const microDurations = [4, 4, 4];
   const totalMin = microDurations.reduce((a, b) => a + b, 0);
-
-  // Get briefings list for this topic
-  const briefings = t.briefings || [
-    { text: t.oneLiner },
-    { text: t.briefingBullets[1] ?? t.briefingBullets[0] },
-    { text: t.briefingBullets[2] ?? t.briefingBullets[0] },
-  ];
-  const currentBriefing = briefings[step] ?? briefings[0];
+  const current = t.briefingBullets[step] ?? t.briefingBullets[0];
 
   const quizzes = BRIEFING_QUIZZES[t.day] ?? [];
   const currentQuiz = quizzes[step];
@@ -3672,80 +2438,11 @@ function DayBriefing({ t }: { t: DayTopic }) {
     });
   };
 
-  const handleNextStep = (isSkipped = false) => {
-    if (isSkipped) {
-      const newSkips = skipCount + 1;
-      setSkipCount(newSkips);
-      localStorage.setItem("readiness_video_skips", String(newSkips));
-    }
-    if (step < briefings.length - 1) {
-      setStep(step + 1);
-    } else {
-      nav?.goNext();
-    }
-  };
-
-  const handleGameComplete = (score: number) => {
-    setGameScores((prev) => ({ ...prev, [step]: score }));
-    setChecks((prev) => {
-      const next = [...prev];
-      next[step] = score; // Mark as complete (stores score)
-      return next;
-    });
-  };
-
-  const hasVideo = currentBriefing.videoUrl && formatPref === "video";
-
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
-        <button onClick={() => {
-          if (step > 0) {
-            setStep(step - 1);
-          } else {
-            nav?.goPrev();
-          }
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Briefing · {step + 1} di {briefings.length}</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div style={{ paddingTop: 12, paddingBottom: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-            Briefing · {totalMin} min · {briefings.length} nozioni
-          </div>
-          
-          {skipCount >= 2 && (
-            <button
-              onClick={() => {
-                const nextPref = formatPref === "video" ? "text" : "video";
-                setFormatPref(nextPref);
-                localStorage.setItem("readiness_format_pref", nextPref);
-              }}
-              style={{
-                padding: "4px 10px",
-                backgroundColor: "#FBFAF6",
-                border: "1px solid #E4E3DD",
-                borderRadius: "100px",
-                fontFamily: "Inter, sans-serif",
-                fontSize: "11px",
-                fontWeight: 500,
-                color: "#8E8E89",
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
-              {formatPref === "video" ? "Preferisci il testo?" : "Preferisci i video?"}
-            </button>
-          )}
+      <div style={{ paddingTop: 22, paddingBottom: 10 }}>
+        <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
+          Briefing · {totalMin} min · 3 nozioni + 3 quiz
         </div>
         <div style={{ fontSize: 22, fontWeight: 500, color: BLACK, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
           {t.topic}
@@ -3753,7 +2450,7 @@ function DayBriefing({ t }: { t: DayTopic }) {
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
-        {briefings.map((_, i) => (
+        {microTitles.map((_, i) => (
           <div key={i} style={{
             flex: 1, height: 3, borderRadius: 100,
             backgroundColor: checks[i] !== null ? BLACK : i === step ? "#888" : "#E4E3DD",
@@ -3762,8 +2459,8 @@ function DayBriefing({ t }: { t: DayTopic }) {
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        {briefings.map((_, i) => (
-          <button key={i} onClick={() => setStep(i)} style={{
+        {microTitles.map((label, i) => (
+          <button key={label} onClick={() => setStep(i)} style={{
             flex: 1, padding: "8px 4px", borderRadius: 10,
             border: `1px solid ${i === step ? BLACK : BORDER}`,
             backgroundColor: i === step ? BLACK : WHITE,
@@ -3771,228 +2468,143 @@ function DayBriefing({ t }: { t: DayTopic }) {
             fontSize: 10, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
             letterSpacing: "0.04em",
           }}>
-            {String(i + 1).padStart(2, "0")} · {microDurations[i] || 4}m
+            {String(i + 1).padStart(2, "0")} · {microDurations[i]}m
           </button>
         ))}
       </div>
 
-      {currentBriefing.miniGame ? (
-        <div style={{
-          backgroundColor: WHITE,
-          borderRadius: 16,
-          border: "1px solid #E4E3DD",
-          padding: 20,
-          margin: "0 0px 16px 0px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-        }}>
-          {currentBriefing.miniGame.type === "drag-match" && (
-            <DragMatchGame
-              pairs={currentBriefing.miniGame.pairs || []}
-              onComplete={handleGameComplete}
-            />
-          )}
-          {currentBriefing.miniGame.type === "sequence" && (
-            <SequenceOrderGame
-              items={currentBriefing.miniGame.items || []}
-              correctOrder={currentBriefing.miniGame.correctOrder || []}
-              onComplete={handleGameComplete}
-            />
-          )}
-          {currentBriefing.miniGame.type === "true-false" && (
-            <TrueFalseGame
-              statements={currentBriefing.miniGame.statements || []}
-              onComplete={handleGameComplete}
-            />
-          )}
-          {currentBriefing.miniGame.type === "fill-blank" && (
-            <FillBlankGame
-              sentences={currentBriefing.miniGame.sentences || []}
-              onComplete={handleGameComplete}
-            />
-          )}
-          {currentBriefing.miniGame.type === "scramble" && (
-            <WordScrambleGame
-              target={currentBriefing.miniGame.target || ""}
-              hint={currentBriefing.miniGame.hint || ""}
-              onComplete={handleGameComplete}
-            />
-          )}
+      <div style={{
+        padding: 16, backgroundColor: SURFACE, border: `1px solid ${BORDER}`,
+        borderRadius: 14, marginBottom: 12,
+      }}>
+        <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
+          Nozione {step + 1} / 3 · {microTitles[step]}
+        </div>
+        <div style={{ fontSize: 14, color: BLACK, lineHeight: 1.55 }}>
+          {step === 0 ? t.oneLiner : current}
+        </div>
+      </div>
 
+      {currentQuiz && (
+        <div style={{
+          padding: 14, backgroundColor: WHITE, border: `1px solid ${BORDER}`,
+          borderRadius: 14, marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
+            Quiz briefing {step + 1} / 3
+          </div>
+          <div style={{ fontSize: 13, color: BLACK, lineHeight: 1.45, marginBottom: 12 }}>
+            {currentQuiz.q}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {currentQuiz.options.map((opt, i) => {
+              const picked = checks[step];
+              const isPicked = picked === i;
+              const showResult = picked !== null;
+              const isCorrectOption = i === currentQuiz.correct;
+              let bg: string = SURFACE;
+              let bc: string = BORDER;
+              let fc: string = BLACK;
+              if (showResult) {
+                if (isCorrectOption) { bg = "#EBF5EF"; bc = GREEN; fc = GREEN; }
+                else if (isPicked) { bg = "#FDF6E3"; bc = AMBER; fc = AMBER; }
+              } else if (isPicked) {
+                bg = BLACK; bc = BLACK; fc = WHITE;
+              }
+              return (
+                <button key={opt} onClick={() => picked === null && pickCheck(i)} style={{
+                  padding: "10px 12px", textAlign: "left",
+                  backgroundColor: bg, color: fc,
+                  border: `1px solid ${bc}`,
+                  borderRadius: 10, fontSize: 12, cursor: picked === null ? "pointer" : "default", fontFamily: "inherit",
+                  lineHeight: 1.4,
+                }}>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
           {checks[step] !== null && (
             <div style={{
-              marginTop: 14,
-              padding: "10px 12px",
-              backgroundColor: GREEN_BG,
-              border: `1px solid ${GREEN}`,
+              marginTop: 10, padding: "8px 10px",
+              backgroundColor: checks[step] === currentQuiz.correct ? "#EBF5EF" : "#FDF6E3",
+              border: `1px solid ${checks[step] === currentQuiz.correct ? GREEN : AMBER}`,
               borderRadius: 8,
-              fontSize: 12,
-              color: GREEN,
-              fontWeight: 500,
-              textAlign: "center"
+              fontSize: 11, color: checks[step] === currentQuiz.correct ? GREEN : AMBER, lineHeight: 1.4,
             }}>
-              Gioco completato! Punteggio: {checks[step]}%
+              {checks[step] === currentQuiz.correct
+                ? "Corretto. Lo salviamo come consolidato."
+                : "Non proprio: la risposta giusta è quella in verde. Te la riproponiamo domani."}
             </div>
           )}
         </div>
-      ) : hasVideo ? (
-        <div style={{ marginBottom: 16 }}>
-          <VideoPill
-            videoUrl={currentBriefing.videoUrl || ""}
-            conceptNumber={step + 1}
-            totalConcepts={briefings.length}
-            conceptTitle={currentBriefing.conceptTitle || t.topic}
-            sourceName={currentBriefing.sourceName || "Readiness Source"}
-            sourceYear={currentBriefing.sourceYear || 2026}
-            onNext={(isSkipped) => handleNextStep(isSkipped)}
-            onSaveVoice={() => alert("Nota vocale salvata!")}
-          />
-        </div>
-      ) : (
-        <>
-          <div style={{
-            padding: 16, backgroundColor: SURFACE, border: `1px solid ${BORDER}`,
-            borderRadius: 14, marginBottom: 12,
-          }}>
-            <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
-              Nozione {step + 1} / {briefings.length} · {microTitles[step] || "Concetto chiave"}
-            </div>
-            <div style={{ fontSize: 14, color: BLACK, lineHeight: 1.55 }}>
-              {currentBriefing.text}
-            </div>
+      )}
+
+      <button onClick={() => setSourcesOpen((v) => !v)} style={{
+        padding: "11px 14px", backgroundColor: WHITE,
+        border: `1px solid ${BORDER}`, borderRadius: 12,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        cursor: "pointer", fontFamily: "inherit", marginBottom: 10,
+      }}>
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Fonti tracciate
           </div>
+          <div style={{ fontSize: 12, color: BLACK, marginTop: 2 }}>
+            2 accademiche · 3 giornalismo specializzato
+          </div>
+        </div>
+        <div style={{ fontSize: 16, color: BLACK, transform: sourcesOpen ? "rotate(45deg)" : "none", transition: "transform 150ms" }}>+</div>
+      </button>
 
-          {currentQuiz && (
-            <div style={{
-              padding: 14, backgroundColor: WHITE, border: `1px solid ${BORDER}`,
-              borderRadius: 14, marginBottom: 12,
+      {sourcesOpen && (
+        <div style={{
+          padding: 14, backgroundColor: SURFACE,
+          border: `1px solid ${BORDER}`, borderRadius: 12, marginBottom: 12,
+        }}>
+          {[
+            { kind: "Accademica", title: "Bender & Koller, 2020 — Climbing towards NLU", meta: "Paper · ACL" },
+            { kind: "Accademica", title: "Stanford CRFM — Foundation Models report", meta: "Paper · 2023" },
+            { kind: "Giornalismo", title: "MIT Tech Review — How LLMs really work", meta: "Long-form · 2024" },
+            { kind: "Ricerca lab", title: "Anthropic — Mapping the mind of a model", meta: "Research note" },
+            { kind: "Osservatorio", title: "PoliMi — AI nelle imprese italiane", meta: "Report · 2025" },
+          ].map((src) => (
+            <div key={src.title} style={{
+              display: "flex", gap: 10, paddingBottom: 10, marginBottom: 10,
+              borderBottom: `1px solid ${BORDER}`,
             }}>
-              <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
-                Quiz briefing {step + 1} / {briefings.length}
-              </div>
-              <div style={{ fontSize: 13, color: BLACK, lineHeight: 1.45, marginBottom: 12 }}>
-                {currentQuiz.q}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {currentQuiz.options.map((opt, i) => {
-                  const picked = checks[step];
-                  const isPicked = picked === i;
-                  const showResult = picked !== null;
-                  const isCorrectOption = i === currentQuiz.correct;
-                  let bg: string = SURFACE;
-                  let bc: string = BORDER;
-                  let fc: string = BLACK;
-                  if (showResult) {
-                    if (isCorrectOption) { bg = "#EBF5EF"; bc = GREEN; fc = GREEN; }
-                    else if (isPicked) { bg = "#FDF6E3"; bc = AMBER; fc = AMBER; }
-                  } else if (isPicked) {
-                    bg = BLACK; bc = BLACK; fc = WHITE;
-                  }
-                  return (
-                    <button key={opt} onClick={() => picked === null && pickCheck(i)} style={{
-                      padding: "10px 12px", textAlign: "left",
-                      backgroundColor: bg, color: fc,
-                      border: `1px solid ${bc}`,
-                      borderRadius: 10, fontSize: 12, cursor: picked === null ? "pointer" : "default", fontFamily: "inherit",
-                      lineHeight: 1.4,
-                    }}>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-              {checks[step] !== null && (
-                <div style={{
-                  marginTop: 10, padding: "8px 10px",
-                  backgroundColor: checks[step] === currentQuiz.correct ? "#EBF5EF" : "#FDF6E3",
-                  border: `1px solid ${checks[step] === currentQuiz.correct ? GREEN : AMBER}`,
-                  borderRadius: 8,
-                  fontSize: 11, color: checks[step] === currentQuiz.correct ? GREEN : AMBER, lineHeight: 1.4,
-                }}>
-                  {checks[step] === currentQuiz.correct
-                    ? "Corretto. Lo salviamo come consolidato."
-                    : "Non proprio: la risposta giusta è quella in verde. Te la riproponiamo domani."}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      {!currentBriefing.miniGame && !hasVideo && (
-        <>
-          <button onClick={() => setSourcesOpen((v) => !v)} style={{
-            padding: "11px 14px", backgroundColor: WHITE,
-            border: `1px solid ${BORDER}`, borderRadius: 12,
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            cursor: "pointer", fontFamily: "inherit", marginBottom: 10,
-          }}>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                Fonti tracciate
-              </div>
-              <div style={{ fontSize: 12, color: BLACK, marginTop: 2 }}>
-                2 accademiche · 3 giornalismo specializzato
+              <div style={{
+                minWidth: 78, height: 20, padding: "0 8px", borderRadius: 4, flexShrink: 0,
+                backgroundColor: src.kind === "Accademica" ? BLACK : "#E4E3DD",
+                color: src.kind === "Accademica" ? WHITE : BLACK,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+              }}>{src.kind}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: BLACK, lineHeight: 1.35 }}>{src.title}</div>
+                <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>{src.meta}</div>
               </div>
             </div>
-            <div style={{ fontSize: 16, color: BLACK, transform: sourcesOpen ? "rotate(45deg)" : "none", transition: "transform 150ms" }}>+</div>
-          </button>
-
-          {sourcesOpen && (
-            <div style={{
-              padding: 14, backgroundColor: SURFACE,
-              border: `1px solid ${BORDER}`, borderRadius: 12, marginBottom: 12,
-            }}>
-              {[
-                { kind: "Accademica", title: "Bender & Koller, 2020 — Climbing towards NLU", meta: "Paper · ACL" },
-                { kind: "Accademica", title: "Stanford CRFM — Foundation Models report", meta: "Paper · 2023" },
-                { kind: "Giornalismo", title: "MIT Tech Review — How LLMs really work", meta: "Long-form · 2024" },
-                { kind: "Ricerca lab", title: "Anthropic — Mapping the mind of a model", meta: "Research note" },
-                { kind: "Osservatorio", title: "PoliMi — AI nelle imprese italiane", meta: "Report · 2025" },
-              ].map((src) => (
-                <div key={src.title} style={{
-                  display: "flex", gap: 10, paddingBottom: 10, marginBottom: 10,
-                  borderBottom: `1px solid ${BORDER}`,
-                }}>
-                  <div style={{
-                    minWidth: 78, height: 20, padding: "0 8px", borderRadius: 4, flexShrink: 0,
-                    backgroundColor: src.kind === "Accademica" ? BLACK : "#E4E3DD",
-                    color: src.kind === "Accademica" ? WHITE : BLACK,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
-                  }}>{src.kind}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: BLACK, lineHeight: 1.35 }}>{src.title}</div>
-                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>{src.meta}</div>
-                  </div>
-                </div>
-              ))}
-              <div style={{ fontSize: 10, color: GRAY, lineHeight: 1.5, paddingTop: 2 }}>
-                Solo accademiche, ricerca dei lab, osservatori e giornalismo specializzato verificato.
-              </div>
-            </div>
-          )}
-        </>
+          ))}
+          <div style={{ fontSize: 10, color: GRAY, lineHeight: 1.5, paddingTop: 2 }}>
+            Solo accademiche, ricerca dei lab, osservatori e giornalismo specializzato verificato.
+          </div>
+        </div>
       )}
 
-      {!hasVideo && (
-        <button
-          onClick={() => handleNextStep(false)}
-          disabled={!!(currentBriefing.miniGame && checks[step] === null)}
-          style={{
-            marginTop: "auto", marginBottom: 18,
-            padding: "14px 0", border: "none",
-            backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-            fontSize: 13, fontWeight: 500, cursor: (currentBriefing.miniGame && checks[step] === null) ? "not-allowed" : "pointer",
-            fontFamily: "inherit",
-            opacity: (currentBriefing.miniGame && checks[step] === null) ? 0.4 : 1,
-          }}>
-          {step < briefings.length - 1 ? `Prossima nozione →` : "Vai al quiz finale →"}
-        </button>
-      )}
+      <button
+        onClick={() => step < 2 ? setStep(step + 1) : undefined}
+        style={{
+          marginTop: "auto", marginBottom: 18,
+          padding: "14px 0", border: "none",
+          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+          fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+        }}>
+        {step < 2 ? `Prossima nozione →` : "Vai al quiz finale →"}
+      </button>
     </div>
   );
 }
-
 
 function DayQuiz({ t }: { t: DayTopic }) {
   const isDark = t.mode === "voice" || t.mode === "simulation";
@@ -4001,28 +2613,11 @@ function DayQuiz({ t }: { t: DayTopic }) {
   const surface = isDark ? "#181818" : SURFACE;
   const border = isDark ? "#262626" : BORDER;
 
-  const nav = useProtoNav();
-  const [selected, setSelected] = useState<number | null>(null);
-  const [voiceSubmitted, setVoiceSubmitted] = useState(false);
-
   if (t.mode === "simulation") return <DaySimulation t={t} />;
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", backgroundColor: isDark ? BLACK : undefined, overflowY: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `0.5px solid ${border}`, marginBottom: 12 }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft color={fg} />
-        </button>
-        <div style={{ fontSize: 11, color: sub, letterSpacing: "0.1em" }}>Quiz finale</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon color={fg} />
-        </button>
-      </div>
-
-      <div style={{ paddingTop: 10, paddingBottom: 18 }}>
+      <div style={{ paddingTop: 22, paddingBottom: 18 }}>
         <div style={{ fontSize: 10, color: sub, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
           {t.mode === "voice" ? "Quiz finale · vocale · T-" + t.daysToEvent + "g" : t.mode === "voice-opt" ? "Quiz finale · testo o voce" : "Quiz finale · sintesi dei 3 briefing"}
         </div>
@@ -4036,78 +2631,26 @@ function DayQuiz({ t }: { t: DayTopic }) {
 
       {t.mode === "text" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {["A", "B", "C", "D"].map((l, i) => {
-            const picked = selected === i;
-            const correctOption = 1; // Option B is correct
-            const isCorrect = i === correctOption;
-            const showResult = selected !== null;
-            let bg: string = WHITE;
-            let bc: string = BORDER;
-            let fc: string = BLACK;
-            if (showResult) {
-              if (isCorrect) { bg = "#EBF5EF"; bc = GREEN; fc = GREEN; }
-              else if (picked) { bg = "#FDF6E3"; bc = AMBER; fc = AMBER; }
-            } else if (picked) {
-              bg = BLACK; bc = BLACK; fc = WHITE;
-            }
-            return (
-              <button 
-                key={l} 
-                onClick={() => selected === null && setSelected(i)}
-                style={{
-                  padding: "14px 16px",
-                  backgroundColor: bg,
-                  color: fc,
-                  border: `1px solid ${bc}`,
-                  borderRadius: 14,
-                  display: "flex", alignItems: "center", gap: 12,
-                  cursor: selected === null ? "pointer" : "default",
-                  fontFamily: "inherit",
-                  textAlign: "left",
-                }}
-              >
-                <div style={{
-                  width: 26, height: 26, borderRadius: 6,
-                  backgroundColor: picked ? ACCENT : "#F2F2F2",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 500, color: BLACK,
-                }}>{l}</div>
-                <div style={{ fontSize: 12, lineHeight: 1.4, flex: 1 }}>
-                  {["Opzione plausibile ma incompleta", "Risposta corretta e contestualizzata", "Definizione tecnica fuori contesto", "Affermazione vaga, non sostiene una conversazione"][i]}
-                </div>
-              </button>
-            );
-          })}
-
-          {selected !== null && (
-            <div style={{
-              marginTop: 10, padding: "8px 10px",
-              backgroundColor: selected === 1 ? "#EBF5EF" : "#FDF6E3",
-              border: `1px solid ${selected === 1 ? GREEN : AMBER}`,
-              borderRadius: 8,
-              fontSize: 11, color: selected === 1 ? GREEN : AMBER, lineHeight: 1.4,
+          {["A", "B", "C", "D"].map((l, i) => (
+            <div key={l} style={{
+              padding: "14px 16px",
+              backgroundColor: i === 1 ? BLACK : WHITE,
+              color: i === 1 ? WHITE : BLACK,
+              border: `1px solid ${i === 1 ? BLACK : BORDER}`,
+              borderRadius: 14,
+              display: "flex", alignItems: "center", gap: 12,
             }}>
-              {selected === 1
-                ? "Corretto. Lo salviamo come consolidato."
-                : "Non proprio: la risposta B è quella corretta. Te la riproponiamo domani per consolidarla."}
+              <div style={{
+                width: 26, height: 26, borderRadius: 6,
+                backgroundColor: i === 1 ? "#222" : "#F2F2F2",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 500,
+              }}>{l}</div>
+              <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+                {["Opzione plausibile ma incompleta", "Risposta corretta e contestualizzata", "Definizione tecnica fuori contesto", "Affermazione vaga, non sostiene una conversazione"][i]}
+              </div>
             </div>
-          )}
-
-          <button
-            onClick={() => nav?.goNext()}
-            disabled={selected === null}
-            style={{
-              marginTop: 20, marginBottom: 18,
-              padding: "14px 0", border: "none",
-              backgroundColor: selected !== null ? BLACK : "#C9C8C2",
-              color: WHITE, borderRadius: 100,
-              fontSize: 13, fontWeight: 500, cursor: selected !== null ? "pointer" : "not-allowed",
-              fontFamily: "inherit",
-              opacity: selected !== null ? 1 : 0.5,
-            }}
-          >
-            Completa e vedi il punteggio →
-          </button>
+          ))}
         </div>
       )}
 
@@ -4117,44 +2660,24 @@ function DayQuiz({ t }: { t: DayTopic }) {
             padding: 16, backgroundColor: surface, border: `1px solid ${border}`,
             borderRadius: 14, minHeight: 110, fontSize: 13, color: sub, lineHeight: 1.5,
           }}>
-            {voiceSubmitted ? "Esempio di trascrizione vocale: \"Penso che le allucinazioni siano un aspetto strutturale degli LLM...\"" : "Scrivi la tua risposta in 2–3 frasi..."}
+            Scrivi la tua risposta in 2–3 frasi...
           </div>
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <button 
-              onClick={() => nav?.goNext()}
-              style={{
-                flex: 1, padding: "12px 0", borderRadius: 100,
-                border: `1px solid ${BLACK}`, backgroundColor: WHITE, color: BLACK,
-                fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
+            <button style={{
+              flex: 1, padding: "12px 0", borderRadius: 100,
+              border: `1px solid ${BLACK}`, backgroundColor: WHITE, color: BLACK,
+              fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+            }}>
               Invia risposta
             </button>
-            <button 
-              onClick={() => {
-                setVoiceSubmitted(true);
-              }}
-              style={{
-                flex: 1, padding: "12px 0", borderRadius: 100,
-                border: "none", backgroundColor: BLACK, color: WHITE,
-                fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              {voiceSubmitted ? "Riprova voce" : "Rispondi a voce →"}
+            <button style={{
+              flex: 1, padding: "12px 0", borderRadius: 100,
+              border: "none", backgroundColor: BLACK, color: WHITE,
+              fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+            }}>
+              Rispondi a voce →
             </button>
           </div>
-          {voiceSubmitted && (
-            <button
-              onClick={() => nav?.goNext()}
-              style={{
-                width: "100%", marginTop: 14, padding: "14px 0", border: "none",
-                backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-                fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              Usa questa risposta vocale e continua →
-            </button>
-          )}
           <div style={{ marginTop: 14, fontSize: 11, color: GRAY, textAlign: "center" }}>
             Mancano {t.daysToEvent} giorni — è il momento di iniziare ad allenare anche la voce
           </div>
@@ -4174,15 +2697,12 @@ function DayQuiz({ t }: { t: DayTopic }) {
           <div style={{ textAlign: "center", color: sub, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             00:24 · Sto registrando
           </div>
-          <button 
-            onClick={() => nav?.goNext()}
-            style={{
-              marginTop: "auto", marginBottom: 18,
-              padding: "14px 0", border: "none",
-              backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-              fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
+          <button style={{
+            marginTop: "auto", marginBottom: 18,
+            padding: "14px 0", border: "none",
+            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+            fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+          }}>
             Stop e analizza →
           </button>
         </>
@@ -4192,7 +2712,6 @@ function DayQuiz({ t }: { t: DayTopic }) {
 }
 
 function DaySimulation({ t }: { t: DayTopic }) {
-  const nav = useProtoNav();
   const turns: { who: "ai" | "you"; text: string; meta?: string }[] = [
     { who: "ai", text: "Apriamo. Tesi che vuoi difendere oggi in 20 secondi.", meta: "Round 1 · apertura" },
     { who: "you", text: "[tua risposta · 18s · ritmo costante]", meta: "valutazione: chiarezza ✓ · esempio mancante" },
@@ -4203,20 +2722,6 @@ function DaySimulation({ t }: { t: DayTopic }) {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", backgroundColor: BLACK, overflowY: "auto" }}>
-      {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #262626", marginBottom: 12 }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft color={WHITE} />
-        </button>
-        <div style={{ fontSize: 11, color: "#999", letterSpacing: "0.1em" }}>Simulazione</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon color={WHITE} />
-        </button>
-      </div>
-
       <div style={{ paddingTop: 22, paddingBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 10, color: "#999", letterSpacing: "0.16em", textTransform: "uppercase" }}>
@@ -4306,14 +2811,11 @@ function DaySimulation({ t }: { t: DayTopic }) {
         }}>
           Pausa
         </button>
-        <button 
-          onClick={() => nav?.goNext()}
-          style={{
-            flex: 2, padding: "12px 0", border: "none",
-            backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
-            fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-          }}
-        >
+        <button style={{
+          flex: 2, padding: "12px 0", border: "none",
+          backgroundColor: ACCENT, color: BLACK, borderRadius: 100,
+          fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+        }}>
           Chiudi turno e ricevi feedback →
         </button>
       </div>
@@ -4322,25 +2824,10 @@ function DaySimulation({ t }: { t: DayTopic }) {
 }
 
 function DayScore({ t }: { t: DayTopic }) {
-  const nav = useProtoNav();
   const delta = t.scoreAfter - t.scoreBefore;
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", overflowY: "auto" }}>
-      {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${BORDER}`, marginBottom: 12 }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Readiness Score</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div style={{ paddingTop: 10, paddingBottom: 14 }}>
+      <div style={{ paddingTop: 22, paddingBottom: 14 }}>
         <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>
           Sessione conclusa · Giorno {t.day}
         </div>
@@ -4385,16 +2872,13 @@ function DayScore({ t }: { t: DayTopic }) {
         </div>
       </div>
 
-      <button
-        onClick={() => nav?.goNext()}
-        style={{
-          marginTop: "auto", marginBottom: 18,
-          padding: "14px 0", border: "none",
-          backgroundColor: BLACK, color: WHITE, borderRadius: 100,
-          fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-        }}
-      >
-        Prossima sessione →
+      <button style={{
+        marginTop: "auto", marginBottom: 18,
+        padding: "14px 0", border: "none",
+        backgroundColor: BLACK, color: WHITE, borderRadius: 100,
+        fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+      }}>
+        Chiudi sessione
       </button>
     </div>
   );
@@ -4414,30 +2898,6 @@ const DAY_TOPICS: DayTopic[] = [
     quizQuestion: "Spiega in 2 frasi cos'è un LLM a qualcuno che non è del settore.",
     mode: "text",
     scoreBefore: 0, scoreAfter: 18,
-    briefings: [
-      {
-        text: "Un modello statistico che prevede la parola successiva. Non «ragiona»: estrae pattern da miliardi di testi.",
-        videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-        conceptTitle: "Previsione statistica vs Ragionamento",
-        sourceName: "Bender & Koller",
-        sourceYear: 2020,
-      },
-      {
-        text: "Prevedere ≠ comprendere: l'output può essere fluente e sbagliato.",
-        miniGame: {
-          type: "drag-match",
-          pairs: [
-            { term: "Token", definition: "Unità base di testo elaborata dal modello" },
-            { term: "Parametri", definition: "Pesi interni che definiscono la conoscenza" },
-            { term: "Training", definition: "Fase di apprendimento su testi preesistenti" },
-            { term: "Context window", definition: "Limite di memoria della conversazione" }
-          ]
-        }
-      },
-      {
-        text: "La «conoscenza» è ferma alla data di training. Non sa nulla dopo."
-      }
-    ]
   },
   {
     day: 2, daysToEvent: 10,
@@ -4452,31 +2912,6 @@ const DAY_TOPICS: DayTopic[] = [
     quizQuestion: "Quale di questi prompt produrrà il risultato più utile?",
     mode: "text",
     scoreBefore: 18, scoreAfter: 28,
-    briefings: [
-      {
-        text: "Il prompt non è una domanda: è un brief. Ruolo + contesto + obiettivo + formato."
-      },
-      {
-        text: "Dai al modello un ruolo esplicito («sei un senior brand strategist»).",
-        videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-        conceptTitle: "Ruolo e Contesto nel Prompt",
-        sourceName: "Stanford CRFM",
-        sourceYear: 2023,
-      },
-      {
-        text: "Contesto prima della richiesta. Mai presupporre che capisca.",
-        miniGame: {
-          type: "sequence",
-          items: [
-            { id: "1", text: "Assegna un Ruolo chiaro" },
-            { id: "2", text: "Fornisci il Contesto aziendale" },
-            { id: "3", text: "Definisci l'Obiettivo finale" },
-            { id: "4", text: "Specifica il Formato di output" }
-          ],
-          correctOrder: ["1", "2", "3", "4"]
-        }
-      }
-    ]
   },
   {
     day: 3, daysToEvent: 9,
@@ -4491,31 +2926,6 @@ const DAY_TOPICS: DayTopic[] = [
     quizQuestion: "Perché un sistema RAG è preferibile a un LLM puro in ambito enterprise?",
     mode: "text",
     scoreBefore: 28, scoreAfter: 37,
-    briefings: [
-      {
-        text: "RAG = aggiungere fonti esterne al modello in tempo reale. Riduce allucinazioni, aumenta tracciabilità.",
-        miniGame: {
-          type: "true-false",
-          statements: [
-            { text: "RAG riaddestra i pesi interni del modello ad ogni query.", isTrue: false, explanation: "Falso: RAG recupera documenti e li passa nel contesto, senza modificare i pesi del modello." },
-            { text: "Un sistema RAG riduce il rischio di allucinazioni.", isTrue: true, explanation: "Vero: ancorare le risposte a documenti reali limita la generazione di informazioni false." },
-            { text: "Se i documenti caricati contengono errori, RAG produrrà comunque risposte corrette.", isTrue: false, explanation: "Falso: vale il principio 'garbage in, garbage out'. Fonti errate producono risposte errate." },
-            { text: "Le citazioni tracciabili sono fondamentali in ambito professionale.", isTrue: true, explanation: "Vero: permettono all'utente di verificare l'attendibilità della fonte originale." },
-            { text: "RAG sta per Retrieval-Augmented Generation.", isTrue: true, explanation: "Vero: indica la generazione arricchita dal recupero di informazioni esterne." }
-          ]
-        }
-      },
-      {
-        text: "Retrieval = il modello cerca, poi risponde con le fonti recuperate."
-      },
-      {
-        text: "Funziona quando le fonti sono di qualità. Garbage in, garbage out resta vero.",
-        videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-        conceptTitle: "Ancoraggio e Qualità delle Fonti",
-        sourceName: "Anthropic Research",
-        sourceYear: 2024,
-      }
-    ]
   },
   {
     day: 4, daysToEvent: 8,
@@ -4530,25 +2940,6 @@ const DAY_TOPICS: DayTopic[] = [
     quizQuestion: "Riassumi in 30 secondi: come riconosci un'allucinazione in produzione?",
     mode: "voice-opt",
     scoreBefore: 37, scoreAfter: 45,
-    briefings: [
-      {
-        text: "Non è un bug — è il modo in cui funzionano. Generano testo plausibile anche quando non sanno."
-      },
-      {
-        text: "Più la domanda è specifica e fuori distribuzione, più alta la probabilità.",
-        miniGame: {
-          type: "fill-blank",
-          sentences: [
-            { before: "Le allucinazioni sono il modo in cui il modello genera testo ", answer: "plausibile", after: " anche quando non conosce la risposta.", options: ["plausibile", "verificato", "strutturato"] },
-            { before: "Il rischio aumenta quando facciamo domande fuori ", answer: "distribuzione", after: " rispetto ai dati di training.", options: ["distribuzione", "temperatura", "contesto"] },
-            { before: "Per limitarle, è utile ordinare al modello di rispondere '", answer: "non lo so", after: "' se non è sicuro.", options: ["non lo so", "riprova", "errore"] }
-          ]
-        }
-      },
-      {
-        text: "Mai delegare decisioni dove l'errore non è verificabile a basso costo."
-      }
-    ]
   },
   {
     day: 5, daysToEvent: 7,
@@ -4563,22 +2954,6 @@ const DAY_TOPICS: DayTopic[] = [
     quizQuestion: "Perché l'adozione AI in Italia è più lenta rispetto al resto d'Europa?",
     mode: "voice-opt",
     scoreBefore: 45, scoreAfter: 53,
-    briefings: [
-      {
-        text: "Adozione a due velocità: enterprise sperimenta, PMI ancora ferma. Il gap di skill è il vincolo."
-      },
-      {
-        text: "Il 18% delle PMI italiane usa AI in produzione (vs 35% Germania)."
-      },
-      {
-        text: "I casi d'uso che funzionano: customer support, ricerca interna, marketing operativo.",
-        miniGame: {
-          type: "scramble",
-          target: "governance dati sporchi e cultura frenano l'adozione",
-          hint: "Fattori non tecnologici che rallentano l'AI in Italia"
-        }
-      }
-    ]
   },
   {
     day: 6, daysToEvent: 6,
@@ -4723,154 +3098,10 @@ interface DaySection {
   screens: ScreenDef[];
 }
 
-// ── Catalog-only wrapper: shows a single Video Pill in static preview mode ──
-function VideoPillCatalogScreen({ b, step, total, t }: { b: BriefingItem; step: number; total: number; t: DayTopic }) {
-  const nav = useProtoNav();
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 0", overflowY: "auto" }}>
-      {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px", borderBottom: `1px solid ${BORDER}` }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Concept {step}/{total}</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div style={{ padding: "16px 20px 10px" }}>
-        <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-          Video Pill · Concetto {step} / {total}
-        </div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: BLACK, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-          {b.conceptTitle || t.topic}
-        </div>
-      </div>
-      <div style={{ padding: "0 20px 16px" }}>
-        <VideoPill
-          videoUrl={b.videoUrl || ""}
-          conceptNumber={step}
-          totalConcepts={total}
-          conceptTitle={b.conceptTitle || t.topic}
-          sourceName={b.sourceName || "Readiness"}
-          sourceYear={b.sourceYear || 2026}
-          onNext={() => nav?.goNext()}
-          onSaveVoice={() => {}}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Catalog-only wrapper: shows a single Mini-Game in static preview mode ──
-function MiniGameCatalogScreen({ b, t }: { b: BriefingItem; t: DayTopic }) {
-  const nav = useProtoNav();
-  const game = b.miniGame!;
-  const gameLabels: Record<string, string> = {
-    "drag-match": "Abbina Termini",
-    "sequence": "Ordina Sequenza",
-    "true-false": "Vero o Falso",
-    "fill-blank": "Riempi il Vuoto",
-    "scramble": "Ricostruisci",
-  };
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", overflowY: "auto" }}>
-      {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `0.5px solid ${BORDER}`, marginBottom: 12 }}>
-        <button onClick={() => nav?.goPrev()} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <ArrowLeft />
-        </button>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: "0.1em" }}>Mini-Game</div>
-        <button onClick={() => {
-          const homeIdx = FLAT_SCREENS.findIndex(s => s.label.includes("· Home"));
-          if (homeIdx !== -1 && nav?.goToIndex) nav.goToIndex(homeIdx);
-        }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}>
-          <CloseIcon />
-        </button>
-      </div>
-
-      <div style={{ paddingTop: 4, paddingBottom: 12 }}>
-        <div style={{ fontSize: 10, color: GRAY, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
-          Mini-Game · {gameLabels[game.type] || game.type}
-        </div>
-        <div style={{ fontSize: 13, color: BLACK, lineHeight: 1.45, marginBottom: 12 }}>
-          {b.text}
-        </div>
-      </div>
-      <div style={{
-        backgroundColor: WHITE,
-        borderRadius: 16,
-        border: "1px solid #E4E3DD",
-        padding: 20,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-      }}>
-        {game.type === "drag-match" && (
-          <DragMatchGame pairs={game.pairs || []} onComplete={() => nav?.goNext()} />
-        )}
-        {game.type === "sequence" && (
-          <SequenceOrderGame items={game.items || []} correctOrder={game.correctOrder || []} onComplete={() => nav?.goNext()} />
-        )}
-        {game.type === "true-false" && (
-          <TrueFalseGame statements={game.statements || []} onComplete={() => nav?.goNext()} />
-        )}
-        {game.type === "fill-blank" && (
-          <FillBlankGame sentences={game.sentences || []} onComplete={() => nav?.goNext()} />
-        )}
-        {game.type === "scramble" && (
-          <WordScrambleGame target={game.target || ""} hint={game.hint || ""} onComplete={() => nav?.goNext()} />
-        )}
-      </div>
-    </div>
-  );
-}
-
 function buildDaySections(): DaySection[] {
   let counter = 11;
   const num = () => String(counter++).padStart(2, "0");
   const sections: DaySection[] = [];
-
-  // Helper: build extra screens for video pills and mini-games in a day's briefings
-  const buildBriefingExtras = (t: DayTopic): ScreenDef[] => {
-    const extras: ScreenDef[] = [];
-    const briefings = t.briefings || [];
-    const total = briefings.length;
-    briefings.forEach((b, i) => {
-      if (b.videoUrl) {
-        const capturedB = b;
-        const capturedT = t;
-        extras.push({
-          label: `${num()} · Video Pill · C${i + 1}`,
-          phase: "F08b · Video Pill",
-          goal: `Concept ${i + 1}: ${capturedB.conceptTitle || capturedT.topic}. Formato verticale 9:16 con CTA adattiva.`,
-          insight: "Apprendimento video in formato TikTok-style: 85% visualizzato attiva la CTA.",
-          render: () => <VideoPillCatalogScreen b={capturedB} step={i + 1} total={total} t={capturedT} />,
-        });
-      }
-      if (b.miniGame) {
-        const capturedB = b;
-        const capturedT = t;
-        const gameTypeLabel: Record<string, string> = {
-          "drag-match": "Abbina",
-          "sequence": "Ordina",
-          "true-false": "V/F",
-          "fill-blank": "Blank",
-          "scramble": "Scramble",
-        };
-        extras.push({
-          label: `${num()} · Mini-Game · ${gameTypeLabel[capturedB.miniGame!.type] || capturedB.miniGame!.type}`,
-          phase: "F08c · Mini-Game",
-          goal: `Active recall interattivo: ${capturedB.miniGame!.type === "drag-match" ? "associazione terminologia" : capturedB.miniGame!.type === "sequence" ? "riordinamento sequenziale" : capturedB.miniGame!.type === "true-false" ? "vero/falso con spiegazione" : capturedB.miniGame!.type === "fill-blank" ? "completamento frase" : "ricostruzione definizione"}.`,
-          insight: "I08 — Active recall con resistenza: migliora la ritenzione del 40% vs lettura passiva.",
-          render: () => <MiniGameCatalogScreen b={capturedB} t={capturedT} />,
-        });
-      }
-    });
-    return extras;
-  };
 
   const t1 = DAY_TOPICS[0];
   sections.push({
@@ -4882,7 +3113,6 @@ function buildDaySections(): DaySection[] {
       { label: `${num()} · Piano 12 giorni`, phase: "F06 · Dashboard", goal: "Rendere visibile la sequenza che porta all'evento.", insight: "I01 — La struttura risolve il «da dove inizio».", render: () => <PlanScreen /> },
       { label: `${num()} · Sessione · intro`, phase: "F07 · Entrata sessione", goal: `Aprire la micro-sessione del giorno: ${t1.topicShort}.`, insight: "I01 — Micro-sessioni < soglia di rinvio.", render: () => <DayIntro t={t1} /> },
       { label: `${num()} · 3 briefing + quiz`, phase: "F08 · Briefing", goal: "Tre nozioni, ognuna con un quiz a scelta multipla subito dopo.", insight: "I04 — Seleziona, non aggrega.", render: () => <DayBriefing t={t1} /> },
-      ...buildBriefingExtras(t1),
       { label: `${num()} · Quiz finale`, phase: "F10 · Quiz finale", goal: "Una sola domanda che sintetizza i 3 briefing della giornata.", insight: "I08 — Rehearsal cumulativo, non puntuale.", render: () => <DayQuiz t={t1} /> },
       { label: `${num()} · Readiness score`, phase: "F13 · Readiness score", goal: "Chiusura del ciclo: percentuale + delta.", insight: "I03 — Saprai dove sei prima di entrare.", render: () => <DayScore t={t1} /> },
     ],
@@ -4903,7 +3133,6 @@ function buildDaySections(): DaySection[] {
       screens: [
         { label: `${num()} · Sessione · intro`, phase: "F07 · Entrata sessione", goal: `Aprire la micro-sessione del giorno: ${t.topicShort}.`, insight: "I01 — 15 min sotto la soglia di rinvio.", render: () => <DayIntro t={t} /> },
         { label: `${num()} · 3 briefing + quiz`, phase: "F08 · Briefing", goal: "Tre nozioni, ognuna con un quiz a scelta multipla subito dopo.", insight: "I04 — Seleziona, non aggrega.", render: () => <DayBriefing t={t} /> },
-        ...buildBriefingExtras(t),
         {
           label: `${num()} · Quiz finale · ${t.mode === "text" ? "testo" : t.mode === "voice-opt" ? "testo+voce" : t.mode === "voice" ? "voce" : "simulazione"}`,
           phase: quizPhase,
@@ -5090,166 +3319,57 @@ function InteractivePrototype() {
   const go = (delta: number) => setIdx((c) => Math.max(0, Math.min(total - 1, c + delta)));
 
   return (
-    <ProtoNavCtx.Provider value={{
-      goNext: () => go(1),
-      goPrev: () => go(-1),
-      goToIndex: (targetIdx: number) => setIdx(Math.max(0, Math.min(total - 1, targetIdx)))
-    }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 460px) 1fr", gap: 56, padding: "0 60px", maxWidth: 1400, margin: "0 auto" }}>
-        {/* Colonna telefono */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ paddingTop: 24 }}>
-            <PhoneFrame label={s.label} bg={s.bg}>
-              {s.render()}
-            </PhoneFrame>
-          </div>
-
-          {/* Controlli prev/next */}
-          <div style={{ display: "flex", gap: 12, marginTop: 28, width: 390 }}>
-            <button
-              onClick={() => go(-1)}
-              disabled={idx === 0}
-              style={{
-                flex: 1, padding: "12px 16px",
-                backgroundColor: "#FFFFFF", color: BLACK,
-                border: `1px solid ${BLACK}`, borderRadius: 100,
-                fontSize: 12, fontWeight: 500, cursor: idx === 0 ? "not-allowed" : "pointer",
-                opacity: idx === 0 ? 0.35 : 1, fontFamily: "inherit",
-              }}
-            >
-              ← Precedente
-            </button>
-            <button
-              onClick={() => go(1)}
-              disabled={idx === total - 1}
-              style={{
-                flex: 1, padding: "12px 16px",
-                backgroundColor: BLACK, color: "#FFFFFF",
-                border: `1px solid ${BLACK}`, borderRadius: 100,
-                fontSize: 12, fontWeight: 500, cursor: idx === total - 1 ? "not-allowed" : "pointer",
-                opacity: idx === total - 1 ? 0.35 : 1, fontFamily: "inherit",
-              }}
-            >
-              Successivo →
-            </button>
-          </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: GRAY }}>
-            {idx + 1} / {total} · {s.day} — {s.dayTitle}
-          </div>
-
-          {/* Card dettaglio fase */}
-          <div style={{ width: 390, marginTop: 24 }}>
-            <PhaseDetail s={s} />
-          </div>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 460px) 1fr", gap: 56, padding: "0 60px", maxWidth: 1400, margin: "0 auto" }}>
+      {/* Colonna telefono */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ paddingTop: 24 }}>
+          <PhoneFrame label={s.label} bg={s.bg}>
+            {s.render()}
+          </PhoneFrame>
         </div>
 
-        {/* Colonna navigatore */}
-        <NavigatorPanel current={idx} onPick={setIdx} />
-      </div>
-    </ProtoNavCtx.Provider>
-  );
-}
-
-// ─── Mobile full-screen prototype (Figma-like on real phone) ────────────────
-function MobilePrototypeApp() {
-  const [idx, setIdx] = useState(0);
-  const s = FLAT_SCREENS[idx];
-  const total = FLAT_SCREENS.length;
-  const touchStartX = useRef<number | null>(null);
-
-  const go = (delta: number) => setIdx((c) => Math.max(0, Math.min(total - 1, c + delta)));
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
-    touchStartX.current = null;
-  };
-
-  return (
-    <ProtoNavCtx.Provider value={{
-      goNext: () => go(1),
-      goPrev: () => go(-1),
-      goToIndex: (targetIdx: number) => setIdx(Math.max(0, Math.min(total - 1, targetIdx)))
-    }}>
-      <style>{`
-        html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        .mobile-proto-screen { animation: slideIn 0.22s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
-      `}</style>
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          width: "100%", height: "100vh",
-          backgroundColor: s.bg || "#F9F8F4",
-          display: "flex", flexDirection: "column",
-          fontFamily: "'Helvetica Neue', Helvetica, sans-serif",
-          overflow: "hidden", position: "relative",
-        }}
-      >
-        {/* Top status bar */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "14px 20px 8px",
-          backgroundColor: s.bg || "#F9F8F4",
-          flexShrink: 0, zIndex: 10,
-          borderBottom: `1px solid rgba(0,0,0,0.06)`,
-        }}>
+        {/* Controlli prev/next */}
+        <div style={{ display: "flex", gap: 12, marginTop: 28, width: 390 }}>
           <button
             onClick={() => go(-1)}
             disabled={idx === 0}
             style={{
-              background: "none", border: "none", padding: 4,
-              opacity: idx === 0 ? 0.25 : 1, cursor: idx === 0 ? "default" : "pointer",
-              color: s.bg === BLACK ? WHITE : BLACK, fontSize: 20, lineHeight: 1,
+              flex: 1, padding: "12px 16px",
+              backgroundColor: "#FFFFFF", color: BLACK,
+              border: `1px solid ${BLACK}`, borderRadius: 100,
+              fontSize: 12, fontWeight: 500, cursor: idx === 0 ? "not-allowed" : "pointer",
+              opacity: idx === 0 ? 0.35 : 1, fontFamily: "inherit",
             }}
-          >←</button>
-
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: s.bg === BLACK ? "rgba(255,255,255,0.5)" : GRAY }}>
-              {s.day}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 500, color: s.bg === BLACK ? WHITE : BLACK, marginTop: 1 }}>
-              {idx + 1} / {total}
-            </div>
-          </div>
-
+          >
+            ← Precedente
+          </button>
           <button
             onClick={() => go(1)}
             disabled={idx === total - 1}
             style={{
-              background: "none", border: "none", padding: 4,
-              opacity: idx === total - 1 ? 0.25 : 1, cursor: idx === total - 1 ? "default" : "pointer",
-              color: s.bg === BLACK ? WHITE : BLACK, fontSize: 20, lineHeight: 1,
+              flex: 1, padding: "12px 16px",
+              backgroundColor: BLACK, color: "#FFFFFF",
+              border: `1px solid ${BLACK}`, borderRadius: 100,
+              fontSize: 12, fontWeight: 500, cursor: idx === total - 1 ? "not-allowed" : "pointer",
+              opacity: idx === total - 1 ? 0.35 : 1, fontFamily: "inherit",
             }}
-          >→</button>
+          >
+            Successivo →
+          </button>
+        </div>
+        <div style={{ marginTop: 12, fontSize: 11, color: GRAY }}>
+          {idx + 1} / {total} · {s.day} — {s.dayTitle}
         </div>
 
-        {/* Screen content */}
-        <div
-          key={idx}
-          className="mobile-proto-screen"
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            backgroundColor: s.bg || "#F9F8F4",
-          }}
-        >
-          {s.render()}
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ height: 3, backgroundColor: "rgba(0,0,0,0.06)", flexShrink: 0 }}>
-          <div style={{ height: "100%", width: `${((idx + 1) / total) * 100}%`, backgroundColor: ACCENT, transition: "width 0.3s ease" }} />
+        {/* Card dettaglio fase */}
+        <div style={{ width: 390, marginTop: 24 }}>
+          <PhaseDetail s={s} />
         </div>
       </div>
-    </ProtoNavCtx.Provider>
+
+      {/* Colonna navigatore */}
+      <NavigatorPanel current={idx} onPick={setIdx} />
+    </div>
   );
 }
 
@@ -5280,20 +3400,9 @@ function CatalogView() {
 
 export function ReadinessHome() {
   const [view, setView] = useState<"single" | "catalog">("single");
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 640);
-
-  useEffect(() => {
-    const handle = () => setIsMobile(window.innerWidth <= 640);
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
-  }, []);
-
-  // On real phones: full-screen Figma-like prototype
-  if (isMobile) return <MobilePrototypeApp />;
 
   return (
     <div
-      id="interactive-prototype"
       style={{
         width: "100%",
         minHeight: "100vh",
@@ -5309,16 +3418,6 @@ export function ReadinessHome() {
         .readiness-proto button { font-family: inherit; }
         .readiness-proto *::-webkit-scrollbar { width: 0; height: 0; display: none; }
         .readiness-proto * { scrollbar-width: none; -ms-overflow-style: none; }
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-4px); }
-          75% { transform: translateX(4px); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(5px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
       `}</style>
       <div className="readiness-proto">
         {/* Header */}

@@ -162,17 +162,15 @@ function Hero() {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <button
-            onClick={() => document.getElementById('interactive-prototype')?.scrollIntoView({ behavior: 'smooth' })}
             style={{
               backgroundColor: BLACK, color: "#FFFFFF", border: "none",
               padding: "16px 28px", fontSize: 14, fontWeight: 500,
               fontFamily: FONT, cursor: "pointer", borderRadius: 0,
             }}
           >
-            Prova il prototipo interattivo 📱
+            Dichiara il tuo prossimo evento →
           </button>
           <button
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
             style={{
               backgroundColor: "transparent", color: BLACK, border: `1px solid ${BLACK}`,
               padding: "16px 28px", fontSize: 14, fontWeight: 500,
@@ -211,7 +209,7 @@ function Hero() {
 
 function HowItWorks() {
   return (
-    <div id="how-it-works" style={{ padding: "96px 48px", borderBottom: `0.5px solid ${BORDER}`, fontFamily: FONT }}>
+    <div style={{ padding: "96px 48px", borderBottom: `0.5px solid ${BORDER}`, fontFamily: FONT }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
         <div style={{ marginBottom: 64 }}>
           <SectionLabel>COME FUNZIONA</SectionLabel>
